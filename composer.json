@@ -1,0 +1,43 @@
+{
+    "name": "neamatrix/connex",
+    "description": "Laravel package for Connex DCB login: protected-script, OTP via login-connex, confirm via login-confirm, customizable login UI, mobile Sanctum tokens.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["laravel", "connex", "dcb", "otp", "login", "msisdn", "mobile-auth"],
+    "authors": [
+        {
+            "name": "NeaMatrix",
+            "homepage": "https://github.com/NeaMatrix"
+        }
+    ],
+    "homepage": "https://github.com/NeaMatrix/connex-package",
+    "support": {
+        "issues": "https://github.com/NeaMatrix/connex-package/issues",
+        "source": "https://github.com/NeaMatrix/connex-package"
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/routing": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/http": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/view": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/database": "^10.0|^11.0|^12.0|^13.0"
+    },
+    "suggest": {
+        "laravel/sanctum": "Required for mobile Bearer tokens after OTP confirm (^3.3|^4.0)"
+    },
+    "autoload": {
+        "psr-4": {
+            "Torgodly\\Connex\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Torgodly\\Connex\\ConnexServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
