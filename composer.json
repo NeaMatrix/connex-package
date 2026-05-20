@@ -36,8 +36,9 @@
             "providers": [
                 "Torgodly\\Connex\\ConnexServiceProvider"
             ]
+        },
+        "branch-alias": {
+            "dev-main": "1.0-dev"
         }
-    },
-    "minimum-stability": "stable",
-    "prefer-stable": true
+    }
 }

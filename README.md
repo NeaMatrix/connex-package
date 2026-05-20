@@ -40,13 +40,41 @@ Covers URL building, upstream HTTP (faked), user sync, OTP confirm API, Sanctum 
 
 ## Install
 
+### From Packagist (after package is submitted)
+
+Submit `https://github.com/NeaMatrix/connex-package` on [Packagist.org](https://packagist.org/), then:
+
 ```bash
-composer require neamatrix/connex
+composer require neamatrix/connex:^1.0
 php artisan vendor:publish --tag=connex-config
+php artisan migrate
+composer require laravel/sanctum
+php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
 php artisan migrate
 ```
 
-Register on [Packagist](https://packagist.org/): submit `https://github.com/NeaMatrix/connex-package` after pushing this repo.
+### Before Packagist / dev install
+
+If you see *"Could not find a version matching minimum-stability (stable)"*, use the GitHub repo directly:
+
+```json
+"repositories": [
+    {
+        "type": "vcs",
+        "url": "https://github.com/NeaMatrix/connex-package.git"
+    }
+]
+```
+
+```bash
+composer require neamatrix/connex:^1.0
+```
+
+Or allow dev stability once:
+
+```bash
+composer require neamatrix/connex:dev-main
+```
 
 ### Local path (development)
 
