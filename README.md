@@ -181,7 +181,7 @@ Required elements (configurable via `config/connex.php` → `selectors`):
 | Purpose | Default id / name |
 |--------|-------------------|
 | MSISDN input | `#msisdn` |
-| Submit button | `#cta_button` (API gets `#cta_button`) |
+| Submit button | `#cta_button` — must stay **outside** hidden phone/otp step wrappers (default layout does this) |
 | Transaction | `#transaction_identify` |
 | Device type | `name="device_type"` value `web` |
 
