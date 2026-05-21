@@ -23,6 +23,7 @@ class ConfirmOtpUpstream
             ->post($url, [
                 'msisdn' => $msisdn,
                 'otp' => $otp,
+                'device_type' => config('connex.device_type', 'web'),
             ]);
 
         $data = $response->json() ?? [];
