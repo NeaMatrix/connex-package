@@ -136,6 +136,35 @@ Package registers `GET {CONNEX_WEB_LOGIN_PATH}` (default `/connex/login`) → `c
 
 ## Custom login page
 
+You can fully control layout and styling. Only **element IDs** (from `connex.selectors`) and the submit button **outside** hidden step wrappers are required for the JS flow.
+
+### CSS class overrides
+
+In `config/connex.php` under `ui.classes`, or per page:
+
+```blade
+<x-connex-login
+    title="Welcome"
+    :classes="[
+        'card' => 'my-card',
+        'submit_button_enabled' => 'btn btn-primary w-full',
+        'submit_button_disabled' => 'btn btn-muted w-full',
+        'hidden' => 'd-none',
+    ]"
+/>
+```
+
+Keys: `root`, `card`, `title`, `msisdn_label`, `msisdn_input`, `otp_hint`, `otp_label`, `otp_input`, `phone_step`, `otp_step`, `submit_wrapper`, `submit_button`, `submit_button_enabled`, `submit_button_disabled`, `hidden`, plus debug panel keys. See `Torgodly\Connex\Support\ConnexUi::defaults()`.
+
+Use partials in a fully custom form:
+
+```blade
+@include('connex::partials.hidden-fields')
+@include('connex::partials.msisdn-field', ['uiOverrides' => ['msisdn_input' => 'my-input']])
+<button id="cta_button" type="button">…</button>
+@include('connex::partials.scripts')
+```
+
 **Option A — Blade component (recommended)**
 
 Publish views (optional):
@@ -249,6 +278,11 @@ document.addEventListener('connex:authenticated', function (e) {
 ```
 
 ## Changelog
+
+### v1.1.1
+
+- Fix: OTP confirm updates existing users matched by `msisdn` **or** `{msisdn}@connex.local` email (no duplicate email error).
+- UI: configurable CSS classes via `connex.ui.classes` and `<x-connex-login :classes="[]">`; reusable field partials.
 
 ### v1.1.0
 

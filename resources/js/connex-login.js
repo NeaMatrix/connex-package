@@ -116,6 +116,15 @@
         this.appendLog('INFO', 'DCBProtectRun dispatched');
     };
 
+    ConnexLogin.prototype.buttonClass = function (enabled) {
+        var ui = this.cfg.ui || {};
+        var btn = $(this.sel.submit_button);
+        if (enabled) {
+            return ui.submit_button_enabled || (btn && btn.dataset.connexEnabledClass) || '';
+        }
+        return ui.submit_button_disabled || (btn && btn.dataset.connexDisabledClass) || '';
+    };
+
     ConnexLogin.prototype.setSignInEnabled = function (enabled) {
         var btn = $(this.sel.submit_button);
         if (!btn) {
@@ -123,16 +132,14 @@
         }
         this.protectionReady = enabled;
         btn.disabled = !enabled;
+        var css = this.buttonClass(enabled);
         if (enabled) {
             btn.textContent = btn.dataset.connexLabelSignIn || 'Sign In';
-            if (btn.dataset.connexEnabledClass) {
-                btn.className = btn.dataset.connexEnabledClass;
-            }
         } else {
             btn.textContent = btn.dataset.connexLabelLoading || 'Loading…';
-            if (btn.dataset.connexDisabledClass) {
-                btn.className = btn.dataset.connexDisabledClass;
-            }
+        }
+        if (css) {
+            btn.className = css;
         }
     };
 
@@ -188,20 +195,25 @@
         });
     };
 
+    ConnexLogin.prototype.hiddenClass = function () {
+        return (this.cfg.ui && this.cfg.ui.hidden) || 'hidden';
+    };
+
     ConnexLogin.prototype.showOtpStep = function (msisdn, otpMessage) {
         this.loginPhase = 'otp';
         this.pendingMsisdn = msisdn;
 
+        var hidden = this.hiddenClass();
         var phoneStep = $(this.sel.phone_step);
         var otpStep = $(this.sel.otp_step);
         if (phoneStep) {
-            phoneStep.classList.add('hidden');
+            phoneStep.classList.add(hidden);
         }
         if (otpStep) {
-            otpStep.classList.remove('hidden');
+            otpStep.classList.remove(hidden);
         }
 
-        var hint = document.getElementById('connex_otp_hint');
+        var hint = document.getElementById(this.sel.otp_hint || 'connex_otp_hint');
         if (hint) {
             hint.textContent = otpMessage || 'Enter the OTP sent to your phone.';
         }
@@ -210,6 +222,10 @@
         if (btn) {
             btn.textContent = btn.dataset.connexLabelVerifyOtp || 'Verify OTP';
             btn.disabled = false;
+            var enabledCss = this.buttonClass(true);
+            if (enabledCss) {
+                btn.className = enabledCss;
+            }
         }
 
         var otpEl = $(this.sel.otp);

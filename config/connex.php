@@ -25,6 +25,21 @@ return [
 
     'user_model' => env('CONNEX_USER_MODEL', \App\Models\User::class),
 
+    'user' => [
+        'email_domain' => env('CONNEX_USER_EMAIL_DOMAIN', 'connex.local'),
+    ],
+
+    /*
+    | CSS classes for the default <x-connex-login> layout (override in config or per-component :classes="[]").
+    | Required element IDs stay in connex.selectors — only styling is customizable here.
+    */
+    'ui' => [
+        'classes' => [
+            // 'root' => 'my-app-login',
+            // 'submit_button_enabled' => 'btn btn-primary w-full',
+        ],
+    ],
+
     'otp_handler' => env('CONNEX_OTP_HANDLER', \Torgodly\Connex\Connex\DefaultOtpConfirmationHandler::class),
 
     'mobile' => [
@@ -48,6 +63,7 @@ return [
         'otp_step' => env('CONNEX_OTP_STEP_ID', 'connex_otp_step'),
         'log_output' => env('CONNEX_LOG_OUTPUT_ID', 'log_output'),
         'log_clear' => env('CONNEX_LOG_CLEAR_ID', 'log_clear'),
+        'otp_hint' => env('CONNEX_OTP_HINT_ID', 'connex_otp_hint'),
     ],
 
     'routes' => [

@@ -20,9 +20,11 @@ class SyncConnexSubscriberUser
             throw new \InvalidArgumentException('Connex success payload missing msisdn');
         }
 
+        $email = $this->emailForMsisdn($msisdn);
+
         $attributes = [
             'name' => $msisdn,
-            'email' => $msisdn.'@connex.local',
+            'email' => $email,
             'msisdn' => $msisdn,
             'subscriber' => isset($connexSuccess['subscriber'])
                 ? (string) $connexSuccess['subscriber']
@@ -32,7 +34,10 @@ class SyncConnexSubscriberUser
             'expiration_date' => $connexSuccess['expiration_date'] ?? null,
         ];
 
-        $user = $modelClass::query()->where('msisdn', $msisdn)->first();
+        $user = $modelClass::query()
+            ->where('msisdn', $msisdn)
+            ->orWhere('email', $email)
+            ->first();
 
         if ($user) {
             $user->fill($attributes);
@@ -44,5 +49,12 @@ class SyncConnexSubscriberUser
         }
 
         return $user;
+    }
+
+    protected function emailForMsisdn(string $msisdn): string
+    {
+        $domain = (string) config('connex.user.email_domain', 'connex.local');
+
+        return $msisdn.'@'.$domain;
     }
 }
