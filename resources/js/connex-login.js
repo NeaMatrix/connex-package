@@ -5,15 +5,6 @@
         return global.ConnexLoginConfig || {};
     }
 
-    function getPath(obj, path) {
-        if (!path) {
-            return undefined;
-        }
-        return path.split('.').reduce(function (current, key) {
-            return current && current[key] !== undefined ? current[key] : undefined;
-        }, obj);
-    }
-
     function $(id) {
         return id ? document.getElementById(id) : null;
     }
@@ -21,7 +12,6 @@
     function ConnexLogin() {
         this.cfg = getConfig();
         this.sel = this.cfg.selectors || {};
-        this.accessToken = null;
         this.protectionReady = false;
         this.gatewayTimeoutId = null;
         this.gatewayLoadHandler = null;
@@ -63,51 +53,13 @@
         return (data.failed && data.failed.message) || data.message || 'request failed';
     };
 
-    ConnexLogin.prototype.bearerHeaders = function (contentType) {
-        var headers = {
-            Authorization: 'Bearer ' + this.accessToken,
+    ConnexLogin.prototype.apiHeaders = function () {
+        return {
+            'Content-Type': 'application/json',
             Accept: 'application/json',
+            'X-CSRF-TOKEN': this.cfg.csrfToken || '',
+            'X-Requested-With': 'XMLHttpRequest',
         };
-        if (contentType) {
-            headers['Content-Type'] = contentType;
-        }
-        return headers;
-    };
-
-    ConnexLogin.prototype.fetchAccessToken = function () {
-        var self = this;
-        var payload = {};
-        payload[this.cfg.authEmailField] = this.cfg.authEmail;
-        payload[this.cfg.authPasswordField] = this.cfg.authPassword;
-
-        this.appendLog('INFO', 'POST ' + this.cfg.authLoginUrl, { body: payload });
-
-        return fetch(this.cfg.authLoginUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-            },
-            body: JSON.stringify(payload),
-        }).then(function (response) {
-            return response.text().then(function (text) {
-                var parsed = self.parseJsonResponse(response, text);
-                self.appendLog(response.ok ? 'OK' : 'HTTP ' + response.status, 'auth-login response', parsed.data);
-
-                if (!response.ok) {
-                    throw new Error('auth-login HTTP ' + response.status);
-                }
-
-                var token = getPath(parsed.data, self.cfg.tokenJsonPath || 'data.access_token');
-                if (parsed.data.messageCode !== '00' || !token) {
-                    throw new Error('auth-login failed: ' + self.failedMessage(parsed.data));
-                }
-
-                self.accessToken = token;
-                self.appendLog('OK', 'Bearer token acquired');
-                return self.accessToken;
-            });
-        });
     };
 
     ConnexLogin.prototype.clearGatewayTimeout = function () {
@@ -184,35 +136,36 @@
         }
     };
 
-    ConnexLogin.prototype.loadProtectedScript = function () {
+    ConnexLogin.prototype.fetchBootstrap = function () {
         var self = this;
-        var targeted = this.cfg.targetedElement || ('#' + (this.sel.submit_button || 'cta_button'));
-        var url = this.cfg.protectedScriptUrl + '?targeted_element=' + encodeURIComponent(targeted);
+        var payload = {
+            targeted_element: this.cfg.targetedElement || ('#' + (this.sel.submit_button || 'cta_button')),
+        };
 
-        this.appendLog('INFO', 'GET ' + url);
+        this.appendLog('INFO', 'POST ' + this.cfg.bootstrapUrl + ' (server-side upstream)', payload);
 
-        return fetch(url, {
-            method: 'GET',
-            headers: this.bearerHeaders(),
+        return fetch(this.cfg.bootstrapUrl, {
+            method: 'POST',
+            headers: this.apiHeaders(),
+            body: JSON.stringify(payload),
         }).then(function (response) {
             return response.text().then(function (text) {
                 var parsed = self.parseJsonResponse(response, text);
-                self.appendLog(response.ok ? 'OK' : 'HTTP ' + response.status, 'protected-script response', parsed.data);
+                self.appendLog(
+                    response.ok && parsed.data.messageCode === '00' ? 'OK' : 'HTTP ' + response.status,
+                    'bootstrap response',
+                    parsed.data
+                );
 
-                if (!response.ok) {
-                    throw new Error('protected-script HTTP ' + response.status);
+                if (!response.ok || parsed.data.messageCode !== '00') {
+                    throw new Error('bootstrap failed: ' + self.failedMessage(parsed.data));
                 }
 
-                if (parsed.data.messageCode !== '00' || !parsed.data.success) {
-                    throw new Error('protected-script failed: ' + self.failedMessage(parsed.data));
-                }
-
-                var success = parsed.data.success;
-                var transactionId = success.transaction_identify;
-                var dcbprotect = success.dcbprotect;
+                var transactionId = parsed.data.transaction_identify;
+                var dcbprotect = parsed.data.dcbprotect;
 
                 if (!transactionId || !dcbprotect) {
-                    throw new Error('protected-script missing transaction_identify or dcbprotect');
+                    throw new Error('bootstrap missing transaction_identify or dcbprotect');
                 }
 
                 var txInput = $(self.sel.transaction_identify);
@@ -222,15 +175,14 @@
 
                 self.runDcbProtect(dcbprotect);
 
-                self.appendLog('OK', 'Protection loaded', {
+                self.appendLog('OK', 'Protection loaded (dcbprotect in browser only)', {
                     transaction_identify: transactionId,
-                    targeted_element: targeted,
-                    message: success.message,
-                    user: success.user,
+                    targeted_element: payload.targeted_element,
+                    message: parsed.data.message,
                 });
 
                 return self.waitForGatewayLoad().then(function () {
-                    return success;
+                    return parsed.data;
                 });
             });
         });
@@ -267,16 +219,10 @@
         }
     };
 
-    ConnexLogin.prototype.submitLoginConnex = function () {
+    ConnexLogin.prototype.submitRequestOtp = function () {
         var self = this;
         var msisdnEl = $(this.sel.msisdn);
         var txEl = $(this.sel.transaction_identify);
-        var deviceInput = document.querySelector('[name="' + (this.sel.device_type || 'device_type') + '"]');
-
-        if (!this.accessToken) {
-            this.appendLog('WARN', 'No bearer token — run auth-login first');
-            return Promise.resolve();
-        }
 
         if (!this.protectionReady || !txEl || !txEl.value) {
             this.appendLog('WARN', 'Wait for protection script to finish loading');
@@ -289,24 +235,23 @@
             return Promise.resolve();
         }
 
-        var body = new URLSearchParams({
+        var payload = {
             msisdn: msisdn,
             transaction_identify: txEl.value,
-            device_type: deviceInput ? deviceInput.value : (this.cfg.deviceType || 'web'),
-        }).toString();
+        };
 
-        this.appendLog('INFO', 'POST ' + this.cfg.loginUrl, { body: Object.fromEntries(new URLSearchParams(body)) });
+        this.appendLog('INFO', 'POST ' + this.cfg.requestOtpUrl + ' (server-side login-connex)', payload);
 
-        return fetch(this.cfg.loginUrl, {
+        return fetch(this.cfg.requestOtpUrl, {
             method: 'POST',
-            headers: this.bearerHeaders('application/x-www-form-urlencoded'),
-            body: body,
+            headers: this.apiHeaders(),
+            body: JSON.stringify(payload),
         }).then(function (response) {
             return response.text().then(function (text) {
                 var parsed = self.parseJsonResponse(response, text);
                 self.appendLog(
                     response.ok && parsed.data.messageCode === '00' ? 'OK' : 'HTTP ' + response.status,
-                    'login-connex response',
+                    'request-otp response',
                     parsed.data
                 );
 
@@ -339,11 +284,7 @@
 
         return fetch(this.cfg.confirmOtpUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-CSRF-TOKEN': this.cfg.csrfToken || '',
-            },
+            headers: this.apiHeaders(),
             body: JSON.stringify(payload),
         }).then(function (response) {
             return response.text().then(function (text) {
@@ -378,7 +319,7 @@
 
             var action = self.loginPhase === 'otp'
                 ? self.submitConfirmOtp()
-                : self.submitLoginConnex();
+                : self.submitRequestOtp();
 
             if (self.loginPhase !== 'otp') {
                 btn.textContent = btn.dataset.connexLabelSigningIn || 'Sending OTP…';
@@ -422,22 +363,18 @@
         this.unbindGatewayLoad();
         this.setSignInEnabled(false);
 
-        return this.fetchAccessToken()
-            .then(function () {
-                return self.loadProtectedScript();
-            })
-            .catch(function (error) {
-                self.clearGatewayTimeout();
-                self.unbindGatewayLoad();
-                self.appendLog('ERROR', 'Bootstrap failed', error.message || String(error));
-                self.setSignInEnabled(false);
-                throw error;
-            });
+        return this.fetchBootstrap().catch(function (error) {
+            self.clearGatewayTimeout();
+            self.unbindGatewayLoad();
+            self.appendLog('ERROR', 'Bootstrap failed', error.message || String(error));
+            self.setSignInEnabled(false);
+            throw error;
+        });
     };
 
     ConnexLogin.prototype.init = function () {
         var self = this;
-        this.appendLog('INFO', 'Page ready — auth-login → protected-script');
+        this.appendLog('INFO', 'Page ready — server bootstrap → dcbprotect → gateway-load');
         this.bindLogClear();
         this.bindSubmit();
         return this.bootstrap();

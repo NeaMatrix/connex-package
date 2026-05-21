@@ -48,11 +48,17 @@ class ConnexServiceProvider extends ServiceProvider
     protected function registerRoutes(): void
     {
         $apiPrefix = trim(config('connex.routes.api_prefix', 'connex/api'), '/');
+        $bootstrapPath = trim(config('connex.routes.bootstrap', 'bootstrap'), '/');
+        $requestOtpPath = trim(config('connex.routes.request_otp', 'request-otp'), '/');
         $confirmPath = trim(config('connex.routes.confirm_otp', 'confirm-otp'), '/');
 
         Route::middleware('web')
             ->prefix($apiPrefix)
-            ->group(function () use ($confirmPath) {
+            ->group(function () use ($bootstrapPath, $requestOtpPath, $confirmPath) {
+                Route::post($bootstrapPath, [ConnexAuthController::class, 'bootstrap'])
+                    ->name('connex.api.bootstrap');
+                Route::post($requestOtpPath, [ConnexAuthController::class, 'requestOtp'])
+                    ->name('connex.api.request-otp');
                 Route::post($confirmPath, [ConnexAuthController::class, 'confirmOtp'])
                     ->name('connex.api.confirm-otp');
             });

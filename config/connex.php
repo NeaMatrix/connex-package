@@ -11,7 +11,7 @@ return [
         'auth_login' => env('CONNEX_AUTH_LOGIN_ENDPOINT', env('CONNEX_AUTH_LOGIN_PATH', '/auth-login')),
         'protected_script' => env('CONNEX_PROTECTED_SCRIPT_ENDPOINT', env('CONNEX_PROTECTED_SCRIPT_PATH', '/protected-script')),
         'login' => env('CONNEX_LOGIN_CONNEX_ENDPOINT', env('CONNEX_LOGIN_CONNEX_PATH', env('CONNEX_LOGIN_PATH', '/login-connex'))),
-        'login_confirm' => env('CONNEX_LOGIN_CONFIRM_ENDPOINT', env('CONNEX_LOGIN_CONFIRM_PATH', '/login-confirm')),
+        'login_confirm' => env('CONNEX_LOGIN_CONFIRM_ENDPOINT', env('CONNEX_LOGIN_CONFIRM_PATH', '/login-confirm-connex')),
     ],
 
     'auth' => [
@@ -54,6 +54,8 @@ return [
         'login' => env('CONNEX_WEB_LOGIN_PATH', '/connex/login'),
         'login_confirm' => env('CONNEX_WEB_LOGIN_CONFIRM_PATH', '/connex/login-confirm'),
         'api_prefix' => env('CONNEX_API_PREFIX', 'connex/api'),
+        'bootstrap' => env('CONNEX_API_BOOTSTRAP_PATH', 'bootstrap'),
+        'request_otp' => env('CONNEX_API_REQUEST_OTP_PATH', 'request-otp'),
         'confirm_otp' => env('CONNEX_API_CONFIRM_OTP_PATH', 'confirm-otp'),
     ],
 

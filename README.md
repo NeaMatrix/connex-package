@@ -1,6 +1,6 @@
 # neamatrix/connex
 
-Laravel package for Connex DCB login: `auth-login` → `protected-script` (`#cta_button`) → `DCBProtectRun` → `gateway-load` → `login-connex`.
+Laravel package for Connex DCB login: server-side `auth-login` + `protected-script`, browser-only `dcbprotect` / `gateway-load`, server-side `login-connex` + `login-confirm-connex`, customizable login UI, mobile Sanctum tokens.
 
 ## Database (users table)
 
@@ -45,7 +45,7 @@ Covers URL building, upstream HTTP (faked), user sync, OTP confirm API, Sanctum 
 Submit `https://github.com/NeaMatrix/connex-package` on [Packagist.org](https://packagist.org/), then:
 
 ```bash
-composer require neamatrix/connex:^1.0
+composer require neamatrix/connex:^1.1
 php artisan vendor:publish --tag=connex-config
 php artisan migrate
 composer require laravel/sanctum
@@ -67,7 +67,7 @@ If you see *"Could not find a version matching minimum-stability (stable)"*, use
 ```
 
 ```bash
-composer require neamatrix/connex:^1.0
+composer require neamatrix/connex:^1.1
 ```
 
 Or allow dev stability once:
@@ -102,14 +102,14 @@ Each call uses `CONNEX_BASE_URL` + `CONNEX_*_ENDPOINT`.
 | Auth token | `CONNEX_AUTH_LOGIN_ENDPOINT` | `/auth-login` |
 | DCB script | `CONNEX_PROTECTED_SCRIPT_ENDPOINT` | `/protected-script` |
 | Send OTP | `CONNEX_LOGIN_CONNEX_ENDPOINT` | `/login-connex` |
-| Confirm OTP | `CONNEX_LOGIN_CONFIRM_ENDPOINT` | `/login-confirm` |
+| Confirm OTP | `CONNEX_LOGIN_CONFIRM_ENDPOINT` | `/login-confirm-connex` |
 
 ```env
 CONNEX_BASE_URL=https://jobassistant.mooo.com
 CONNEX_AUTH_LOGIN_ENDPOINT=/auth-login
 CONNEX_PROTECTED_SCRIPT_ENDPOINT=/protected-script
 CONNEX_LOGIN_CONNEX_ENDPOINT=/login-connex
-CONNEX_LOGIN_CONFIRM_ENDPOINT=/login-confirm
+CONNEX_LOGIN_CONFIRM_ENDPOINT=/login-confirm-connex
 ```
 
 ```env
@@ -119,6 +119,16 @@ CONNEX_WEB_LOGIN_PATH=/connex/login
 CONNEX_DEBUG_LOG=true
 CONNEX_SUBMIT_BUTTON_ID=cta_button
 ```
+
+## Browser vs server (v1.1+)
+
+| Step | Where it runs |
+|------|----------------|
+| `auth-login`, `protected-script`, `login-connex` | **Laravel** (`POST /connex/api/bootstrap`, `POST /connex/api/request-otp`) |
+| `dcbprotect` script + `DCBProtectRun` + `gateway-load` | **Browser** (antifraud; credentials never sent to the client) |
+| `login-confirm-connex` | **Laravel** (`POST /connex/api/confirm-otp`) |
+
+`ConnexLoginConfig` exposes only Laravel API URLs + CSRF + selectors — not `CONNEX_AUTH_EMAIL`, `CONNEX_AUTH_PASSWORD`, or upstream URLs.
 
 ## Default login page
 
@@ -187,10 +197,11 @@ Required elements (configurable via `config/connex.php` → `selectors`):
 
 ## OTP + mobile login
 
-1. User submits phone → `login-connex` (OTP sent).
-2. UI **automatically switches** to the OTP field (`#otp` in `#connex_otp_step`; button label becomes “Verify OTP”).
-3. User submits OTP → `POST /connex/api/confirm-otp` (Laravel):
-   - Calls upstream `login-confirm` with `msisdn` + `otp`
+1. Page load → `POST /connex/api/bootstrap` (fresh `transaction_identify` + `dcbprotect`).
+2. User submits phone → `POST /connex/api/request-otp` (server calls `login-connex`; OTP sent).
+3. UI **automatically switches** to the OTP field (`#otp` in `#connex_otp_step`; button label becomes “Verify OTP”).
+4. User submits OTP → `POST /connex/api/confirm-otp` (Laravel):
+   - Calls upstream `login-confirm-connex` with `msisdn` + `otp` + `device_type`
    - Creates/updates local user from Connex `success` payload
    - Issues Sanctum token for the mobile app
    - Runs your `HandlesOtpConfirmation` handler for custom JSON
@@ -237,6 +248,22 @@ document.addEventListener('connex:authenticated', function (e) {
 });
 ```
 
-## Security note
+## Changelog
 
-Credentials are rendered into `ConnexLoginConfig` for browser `auth-login`. OTP confirm runs server-side. For production, consider moving OTP request server-side too.
+### v1.1.0
+
+- **Security:** upstream auth, protected-script, and login-connex run on the server; browser only runs `dcbprotect` / `gateway-load`.
+- New API routes: `POST {CONNEX_API_PREFIX}/bootstrap`, `POST …/request-otp`.
+- Default confirm upstream path: `/login-confirm-connex` (`CONNEX_LOGIN_CONFIRM_ENDPOINT`).
+
+### v1.0.2
+
+- Send `device_type` on login-confirm upstream request.
+
+### v1.0.1
+
+- Fix: Sign In button visible on OTP step.
+
+### v1.0.0
+
+- Initial release.
