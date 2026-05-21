@@ -116,13 +116,16 @@
         this.appendLog('INFO', 'DCBProtectRun dispatched');
     };
 
+    ConnexLogin.prototype.rootElement = function () {
+        return document.querySelector('[data-connex-login-root]');
+    };
+
     ConnexLogin.prototype.buttonClass = function (enabled) {
-        var ui = this.cfg.ui || {};
         var btn = $(this.sel.submit_button);
-        if (enabled) {
-            return ui.submit_button_enabled || (btn && btn.dataset.connexEnabledClass) || '';
+        if (!btn) {
+            return '';
         }
-        return ui.submit_button_disabled || (btn && btn.dataset.connexDisabledClass) || '';
+        return enabled ? btn.dataset.connexEnabledClass || '' : btn.dataset.connexDisabledClass || '';
     };
 
     ConnexLogin.prototype.setSignInEnabled = function (enabled) {
@@ -196,7 +199,8 @@
     };
 
     ConnexLogin.prototype.hiddenClass = function () {
-        return (this.cfg.ui && this.cfg.ui.hidden) || 'hidden';
+        var root = this.rootElement();
+        return (root && root.dataset.connexHiddenClass) || 'hidden';
     };
 
     ConnexLogin.prototype.showOtpStep = function (msisdn, otpMessage) {

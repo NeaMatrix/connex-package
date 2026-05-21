@@ -134,86 +134,68 @@ CONNEX_SUBMIT_BUTTON_ID=cta_button
 
 Package registers `GET {CONNEX_WEB_LOGIN_PATH}` (default `/connex/login`) → `connex::login`.
 
-## Custom login page
+## Custom login page (design in your Blade view)
 
-You can fully control layout and styling. Only **element IDs** (from `connex.selectors`) and the submit button **outside** hidden step wrappers are required for the JS flow.
+**All layout and CSS live in your view** — not in `config/connex.php`. The package only requires correct **element IDs** (from `connex.selectors`) and the submit button **outside** the hidden phone/OTP step wrappers.
 
-### CSS class overrides
-
-In `config/connex.php` under `ui.classes`, or per page:
-
-```blade
-<x-connex-login
-    title="Welcome"
-    :classes="[
-        'card' => 'my-card',
-        'submit_button_enabled' => 'btn btn-primary w-full',
-        'submit_button_disabled' => 'btn btn-muted w-full',
-        'hidden' => 'd-none',
-    ]"
-/>
-```
-
-Keys: `root`, `card`, `title`, `msisdn_label`, `msisdn_input`, `otp_hint`, `otp_label`, `otp_input`, `phone_step`, `otp_step`, `submit_wrapper`, `submit_button`, `submit_button_enabled`, `submit_button_disabled`, `hidden`, plus debug panel keys. See `Torgodly\Connex\Support\ConnexUi::defaults()`.
-
-Use partials in a fully custom form:
-
-```blade
-@include('connex::partials.hidden-fields')
-@include('connex::partials.msisdn-field', ['uiOverrides' => ['msisdn_input' => 'my-input']])
-<button id="cta_button" type="button">…</button>
-@include('connex::partials.scripts')
-```
-
-**Option A — Blade component (recommended)**
-
-Publish views (optional):
+Publish the example and edit it:
 
 ```bash
 php artisan vendor:publish --tag=connex-views
 ```
 
-Create `resources/views/my-login.blade.php`:
-
-```blade
-<!DOCTYPE html>
-<html>
-<head>
-    <title>My brand login</title>
-</head>
-<body>
-    <x-connex-login title="Welcome">
-        <x-slot:form>
-            {{-- Required IDs from config (default: msisdn, cta_button, transaction_identify) --}}
-            <input id="msisdn" type="tel" placeholder="Phone">
-            @include('connex::partials.hidden-fields')
-            <button id="cta_button" type="button" disabled
-                data-connex-label-sign-in="Continue"
-                data-connex-label-loading="Please wait…"
-                data-connex-label-signing-in="Sending OTP…">
-                Please wait…
-            </button>
-        </x-slot:form>
-    </x-connex-login>
-</body>
-</html>
-```
-
-Point the package at your view:
+Copy `resources/views/vendor/connex/login.blade.php` to e.g. `resources/views/my-login.blade.php`, change classes/markup freely, then:
 
 ```env
 CONNEX_LOGIN_VIEW=my-login
 ```
 
-**Option B — Include scripts only**
+**Minimal custom page:**
 
-Keep your own HTML and add at the bottom:
+```blade
+<!DOCTYPE html>
+<html>
+<head><title>My login</title></head>
+<body class="my-page">
+    <x-connex-login class="my-login-root" data-connex-hidden-class="is-hidden">
+        @include('connex::partials.hidden-fields')
+
+        <div id="connex_phone_step" class="my-phone-step">
+            <input id="msisdn" name="msisdn" type="tel" class="my-input" required>
+        </div>
+
+        <div id="connex_otp_step" class="is-hidden my-otp-step">
+            <p id="connex_otp_hint" class="my-hint">Check your SMS</p>
+            <input id="otp" name="otp" type="text" class="my-input" inputmode="numeric">
+        </div>
+
+        <button
+            id="cta_button"
+            type="button"
+            disabled
+            class="my-btn my-btn--disabled"
+            data-connex-label-sign-in="Continue"
+            data-connex-label-loading="Please wait…"
+            data-connex-label-verify-otp="Verify"
+            data-connex-enabled-class="my-btn my-btn--primary"
+            data-connex-disabled-class="my-btn my-btn--disabled"
+        >Please wait…</button>
+    </x-connex-login>
+</body>
+</html>
+```
+
+- `data-connex-hidden-class` on `<x-connex-login>` must match the class you use to hide steps (e.g. Tailwind `hidden`, Bootstrap `d-none`, or your own `is-hidden`).
+- Button `data-connex-enabled-class` / `data-connex-disabled-class` are optional; JS swaps them when enabling/disabling the button.
+
+**Without the component** — same markup, end with:
 
 ```blade
 @include('connex::partials.hidden-fields')
-@include('connex::partials.debug-log')
 @include('connex::partials.scripts')
 ```
+
+Wrap markup in `<div data-connex-login-root data-connex-hidden-class="hidden">` so step toggling works.
 
 Required elements (configurable via `config/connex.php` → `selectors`):
 
@@ -279,10 +261,13 @@ document.addEventListener('connex:authenticated', function (e) {
 
 ## Changelog
 
+### v1.1.2
+
+- UI: design only in Blade views — `<x-connex-login>` is a thin wrapper; removed `connex.ui.classes` config and styled partials.
+
 ### v1.1.1
 
 - Fix: OTP confirm updates existing users matched by `msisdn` **or** `{msisdn}@connex.local` email (no duplicate email error).
-- UI: configurable CSS classes via `connex.ui.classes` and `<x-connex-login :classes="[]">`; reusable field partials.
 
 ### v1.1.0
 

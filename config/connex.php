@@ -29,17 +29,6 @@ return [
         'email_domain' => env('CONNEX_USER_EMAIL_DOMAIN', 'connex.local'),
     ],
 
-    /*
-    | CSS classes for the default <x-connex-login> layout (override in config or per-component :classes="[]").
-    | Required element IDs stay in connex.selectors — only styling is customizable here.
-    */
-    'ui' => [
-        'classes' => [
-            // 'root' => 'my-app-login',
-            // 'submit_button_enabled' => 'btn btn-primary w-full',
-        ],
-    ],
-
     'otp_handler' => env('CONNEX_OTP_HANDLER', \Torgodly\Connex\Connex\DefaultOtpConfirmationHandler::class),
 
     'mobile' => [
